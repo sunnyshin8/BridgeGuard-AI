@@ -1,0 +1,253 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+bridgeguard.db
+*.db-journal
+
+# QIE Node files
+.qie/
+.qied/
+.qierc
+qie-node/
+qied/
+
+# Wallet and private keys
+validator_wallet_info.json
+**/keyring-file/
+**/keys/
+*.key
+*.pem
+*.private
+wallet_*.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
+
+# Node modules
+node_modules/
+package-lock.json
+yarn.lock
+
+# Cache files
+.cache/
+*.cache
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Logs
+logs/
+*.log
+npm-debug.log
+yarn-error.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# OS files
+Thumbs.db
+._*
+.AppleDouble
+.LSOverride
+
+# Test coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Alembic migrations
+alembic/versions/*.py
+!alembic/versions/__init__.py
+
+# Data files
+data/
+*.csv
+exports/
+backups/
+
+# ML Model files
+*.model
+*.pkl
+*.pickle
+*.joblib
+*.h5
+model_weights/
+
+# Blockchain artifacts
+artifacts/
+cache/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Secrets and credentials
+secrets/
+credentials.json
+aws_credentials
+
+# Deployment
+*.pem
+*.crt
+
+# Local development
+local_settings.py
+.env.development
+
+# Generated files
+*.generated.py
+*.proto
+
+# Misc
+config.local.yaml
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+bridgeguard.db
+*.dbm
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Hardhat
+artifacts/
+cache/
+dist/
+
+# QIE Node
+.qie/
+.qied/
+qie-node/
+
+# Wallet & Secrets
+validator_wallet_info.json
+*_wallet_info.json
+*.key
+*.pem
+*.pass
+secrets/
+.keyring-file/
+
+# Backups
+backups/
+*.bak
+*.backup
+*.old
+
+# Exports & Temporary Files
+exports/
+*.csv
+*.tmp
+*.log
+logs/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Misc
+.history/
+.vscode-settings.json
+.python-version
+poetry.lock
+
+# ML Models
+models/
+*.pkl
+*.h5
+*.model
