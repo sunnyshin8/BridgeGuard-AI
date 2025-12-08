@@ -22,7 +22,7 @@ class DashboardController {
      */
     async init() {
         console.log('[Dashboard] Initializing...');
-        
+
         try {
             // Wait for DOM to be ready
             if (document.readyState === 'loading') {
@@ -40,13 +40,13 @@ class DashboardController {
             this.initEventListeners();
             this.initCharts();
             this.setupWebSocket();
-            
+
             // Initial data load
             await this.loadDashboardData();
-            
+
             // Setup auto-refresh
             this.startAutoRefresh();
-            
+
             this.isInitialized = true;
             console.log('[Dashboard] Ready');
         } catch (error) {
@@ -93,12 +93,31 @@ class DashboardController {
     handleNavClick(event) {
         const target = event.currentTarget.getAttribute('data-nav');
         console.log(`[Navigation] Clicked: ${target}`);
-        
+
+        // Hide all sections
+        document.querySelectorAll('.section-content').forEach(el => el.classList.add('hidden'));
+
+        // Show target section if it exists
+        const targetSection = document.getElementById(`${target}Section`) || document.getElementById(`${target.replace(/-([a-z])/g, (g) => g[1].toUpperCase())}Section`);
+        if (targetSection) {
+            targetSection.classList.remove('hidden');
+        } else {
+            // Fallback for sections like 'user-profile' mapping to 'userProfileSection'
+            const camelCaseTarget = target.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+            const camelSection = document.getElementById(`${camelCaseTarget}Section`);
+            if (camelSection) camelSection.classList.remove('hidden');
+        }
+
         // Update active state
         document.querySelectorAll('[data-nav]').forEach(el => {
-            el.classList.remove('border-b-2', 'border-blue-400');
+            el.classList.remove('bg-blue-600', 'text-white');
+            el.classList.add('text-gray-300');
         });
-        event.currentTarget.classList.add('border-b-2', 'border-blue-400');
+        // Add active style to current button (check if it's a button, not link)
+        if (event.currentTarget.tagName === 'BUTTON') {
+            event.currentTarget.classList.remove('text-gray-300');
+            event.currentTarget.classList.add('bg-blue-600', 'text-white');
+        }
     }
 
     handleNetworkChange(event) {
@@ -121,17 +140,17 @@ class DashboardController {
 
     async loadDashboardData() {
         console.log('[Dashboard] Loading data...');
-        
+
         try {
             const stats = await api.getDashboardStats();
             this.updateMetrics(stats);
-            
+
             const transactions = await api.getRecentTransactions(10);
             this.updateTransactionsTable(transactions);
-            
+
             const anomalyData = await api.getAnomalyStats();
             this.updateCharts(anomalyData);
-            
+
             const validatorStats = await api.getValidatorStats();
             this.updateValidatorPanel(validatorStats);
         } catch (error) {
@@ -492,12 +511,11 @@ class DashboardController {
 
     showAlert(message, type = 'info') {
         const alertDiv = document.createElement('div');
-        alertDiv.className = `fixed top-4 right-4 px-4 py-3 rounded-lg text-white text-sm z-50 ${
-            type === 'error' ? 'bg-red-600' :
-            type === 'warning' ? 'bg-yellow-600' :
-            type === 'success' ? 'bg-green-600' :
-            'bg-blue-600'
-        }`;
+        alertDiv.className = `fixed top-4 right-4 px-4 py-3 rounded-lg text-white text-sm z-50 ${type === 'error' ? 'bg-red-600' :
+                type === 'warning' ? 'bg-yellow-600' :
+                    type === 'success' ? 'bg-green-600' :
+                        'bg-blue-600'
+            }`;
         alertDiv.textContent = message;
 
         document.body.appendChild(alertDiv);
@@ -511,11 +529,10 @@ class DashboardController {
 
     showNotification(title, message, type = 'info') {
         const notification = document.createElement('div');
-        notification.className = `fixed bottom-4 right-4 bg-gray-800 border-l-4 rounded p-4 text-white text-sm z-50 ${
-            type === 'error' ? 'border-red-500' :
-            type === 'warning' ? 'border-yellow-500' :
-            'border-blue-500'
-        }`;
+        notification.className = `fixed bottom-4 right-4 bg-gray-800 border-l-4 rounded p-4 text-white text-sm z-50 ${type === 'error' ? 'border-red-500' :
+                type === 'warning' ? 'border-yellow-500' :
+                    'border-blue-500'
+            }`;
         notification.innerHTML = `
             <p class="font-semibold">${title}</p>
             <p class="text-gray-300">${message}</p>
