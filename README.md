@@ -1,64 +1,96 @@
-# 🌉 BridgeGuard AI
+# BridgeGuard AI 🛡️
+> **Advanced QIE Blockchain Validator & Security Monitoring Dashboard**
 
-**AI x Blockchain Hackathon Submission**
+![BridgeGuard AI Dashboard](https://github.com/sunnyshin8/BridgeGuard-AI/raw/main/frontend/public/dashboard-preview.png)
 
-Real-time anomaly detection for cross-chain bridges using machine learning and smart contracts.
+**BridgeGuard AI** is a next-generation validator dashboard that combines real-time blockchain monitoring with AI-powered anomaly detection. It is designed to secure the QIE network by identifying suspicious transaction patterns across bridges.
 
-## 🎯 What is BridgeGuard AI?
+### ✨ Key Features
+*   **QIE Validator:** Full validator node setup and management
+*   **Real-time Monitoring:** Track validator status, voting power, and uptime
+*   **AI Anomaly Detection:** ML-powered transaction analysis for risk assessment
+*   **Cross-Chain Analytics:** Visual insights into bridge traffic and liquidity
+*   **Database Layer:** SQLAlchemy models for bridges, transactions, validators, alerts
+*   **Live Transaction Feed:** Dynamic updates of mainnet activity
 
-An intelligent system that monitors cross-chain bridge transactions in real-time, detecting exploits and anomalies using advanced ML models, with automated smart contract responses powered by QIE V3 validators.
+---
 
-## 🚀 Features
+## 🚀 Quick Start
 
-- ✅ Real-time transaction monitoring
-- ✅ AI-powered anomaly detection (95%+ accuracy)
-- ✅ Smart contract automation
-- ✅ QIE V3 validator integration
-- ✅ Live dashboard monitoring
+### Prerequisites
+*   Python 3.12+
+*   Node.js 16+
+*   WSL2 (for Windows users)
 
-## 🛠️ Tech Stack
+### Installation
 
-- **Backend:** Python, Flask, Web3.py
-- **ML:** scikit-learn (Isolation Forest)
-- **Blockchain:** Solidity, Hardhat, QIE V3
-- **Frontend:** HTML, CSS, JavaScript, TailwindCSS
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/sunnyshin8/BridgeGuard-AI.git
+    cd BridgeGuard-AI
+    ```
 
-## 🔗 Useful Links
+2.  **Setup Python Environment**
+    ```bash
+    python -m venv venv
+    venv\Scripts\activate  # Windows
+    pip install -r requirements.txt
+    ```
 
-### QIE Documentation
-- [QIE Install Node](https://docs.qie.digital/how-to-become-a-validator-on-qie-v3/2.-install-qie-node) - Complete guide for installing QIE node
-- [QIE Validator Guide](https://docs.qie.digital/how-to-become-a-validator-on-qie-v3) - How to become a validator on QIE V3
-- [QIE Docs](https://docs.qie.digital) - Official QIE documentation
-- [QIEDex](https://dex.qie.digital) - QIE decentralized exchange
+3.  **Initialize Database**
+    ```bash
+    python backend/manage_db.py init
+    python backend/manage_db.py seed
+    ```
 
-### Development Resources
-- [Hardhat](https://hardhat.org/docs) - Ethereum development environment
-- [Web3.py](https://web3py.readthedocs.io) - Python library for interacting with Ethereum
+4.  **Setup QIE Validator**
+    ```bash
+    # Setup node
+    python backend/qie_setup_manager.py setup
+    
+    # Register validator
+    python backend/qie_validator_manager.py full
+    ```
 
-## 📋 Getting Started with QIE Node
+5.  **Run Backend**
+    ```bash
+    python backend/app.py
+    ```
 
-For setting up and managing a QIE blockchain validator node, see:
-- **[QIE Node Setup Guide](./docs/QIE_NODE_SETUP.md)** - Complete setup instructions
-- **[QIE Quick Reference](./docs/QIE_QUICK_REFERENCE.md)** - Commands and configuration
-- **[QIE Implementation Summary](./docs/QIE_IMPLEMENTATION_SUMMARY.md)** - Technical details
+6.  **Run Frontend**
+    ```bash
+    cd frontend
+    npm install
+    npm run dev
+    ```
+    
+    *The app will open at `http://localhost:3000`*
 
-### Quick QIE Setup
-```bash
-# Verify system requirements
-bash scripts/verify_qie_setup.sh
+---
 
-# Complete setup (install + init + configure)
-bash scripts/setup_qie_validator.sh
+## 🏗️ Architecture
 
-# Start the node
-qied start --home ~/.qieMainnetNode
+*   **Frontend:** Next.js, Tailwind CSS, React
+*   **Backend:** Flask (Python), SQLAlchemy, Alembic
+*   **Database:** SQLite (dev), PostgreSQL (prod)
+*   **Blockchain:** QIE Network V3 Mainnet
+*   **ML:** TensorFlow, scikit-learn
+*   **Validator:** QIE Node (qied)
 
-# Test Python manager module
-python backend/test_qie_node_manager.py
-```
+---
 
-## 📦 Installation
+## 📚 Documentation
 
-1. Clone the repository:
-   ```bash
-   git clone
+- [Database Schema](docs/DATABASE_SCHEMA.md)
+- [QIE Validator Setup](docs/QIE_VALIDATOR_COMPLETE_GUIDE.md)
+- [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+---
+
+*Built with ❤️ for the QIE Community*
