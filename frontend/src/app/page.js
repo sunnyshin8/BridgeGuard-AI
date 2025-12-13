@@ -14,15 +14,61 @@ import {
     Menu,
     ChevronRight,
     TrendingUp,
-    Boxes
+    Boxes,
+    MessageSquare,
+    Send,
+    Newspaper
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-// import { TransactionVolumeChart, AnomalyDistributionChart } from '@/components/Charts'; // We will create this next
+
+import WalletConnect from '../components/WalletConnect';
+import { Line, Bar } from 'react-chartjs-2';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+} from 'chart.js';
+
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+);
 
 export default function Dashboard() {
     const [activeSection, setActiveSection] = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [selectedNetwork, setSelectedNetwork] = useState('qie');
+
+    // AI Chat State
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatInput, setChatInput] = useState('');
+    const [chatMessages, setChatMessages] = useState([
+        { role: 'ai', text: 'Hello! I am QIE-GPT. I am monitoring the Validator Node and Network Health. Ask me anything!' }
+    ]);
+
+    // UI States for Enhancements
+    const [trafficRange, setTrafficRange] = useState('24h');
+    const [selectedNews, setSelectedNews] = useState(null);
+
+    // Feature Toggle States
+    // Feature Toggle States
+    const [dataSource, setDataSource] = useState('MOCK'); // 'MOCK' or 'REAL'
+    const [walletAddress, setWalletAddress] = useState(null);
+    const [backendStatus, setBackendStatus] = useState('unknown'); // 'online', 'offline', 'unknown'
 
     // Validator State
     const [stats, setStats] = useState({
@@ -47,29 +93,154 @@ export default function Dashboard() {
         { hash: "0x1e2f...8c4a", type: "MsgWithdraw", time: "2m ago", from: "qie1...k9l2", amt: "12.5 QIE" },
     ]);
 
-    // Live Block Updates and transactions
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setNodeStatus(prev => ({ ...prev, height: prev.height + 1 }));
+    // Wallet Connected Callback
+    const handleWalletConnect = (address) => {
+        setWalletAddress(address);
+    };
 
-            // Add new Transaction
-            const newTx = {
-                hash: "0x" + Math.random().toString(16).substr(2, 8) + "..." + Math.random().toString(16).substr(2, 4),
-                type: ["MsgSend", "MsgDelegate", "MsgVote", "MsgWithdraw"][Math.floor(Math.random() * 4)],
-                time: "Just now",
-                from: "qie1..." + Math.random().toString(36).substr(2, 4),
-                amt: (Math.random() * 1000).toFixed(2) + " QIE"
-            };
+    // Real Data Fetching Logic
+    const fetchRealData = async () => {
+        try {
+            // Fetch Node Status
+            const statusRes = await fetch('http://localhost:5000/api/v1/qie/node/status');
+            const statusData = await statusRes.json();
 
-            setTransactions(prev => [newTx, ...prev.slice(0, 9)]);
+            setBackendStatus('online'); // Connection success
 
-            // Randomly toggle anomalies rarely
-            if (Math.random() > 0.95) {
-                setStats(prev => ({ ...prev, anomalies24h: prev.anomalies24h + 1 }));
+            if (statusData.success) {
+                setNodeStatus(prev => ({
+                    ...prev,
+                    height: statusData.data.node.height || prev.height,
+                    synced: statusData.data.node.healthy
+                }));
             }
-        }, 3000); // Update every 3 seconds
+
+            // Fetch Analytics / Daily Stats
+            const statsRes = await fetch('http://localhost:5000/api/v1/analytics/daily-stats');
+            const statsData = await statsRes.json();
+            if (statsData.success) {
+                setStats(prev => ({
+                    ...prev,
+                    anomalies24h: statsData.data.anomalies_detected,
+                    validationRate: statsData.data.validation_success_rate
+                }));
+            }
+
+            // Fetch History (Transactions)
+            const histRes = await fetch('http://localhost:5000/api/v1/bridge/history?limit=10');
+            const histData = await histRes.json();
+            if (histData.success) {
+                if (histData.data.transactions.length > 0) {
+                    const mappedTxs = histData.data.transactions.map(tx => ({
+                        hash: tx.transaction_hash.substr(0, 10) + "...",
+                        type: "BridgeValidation",
+                        time: "Just now",
+                        from: "Network",
+                        amt: tx.amount + " Token"
+                    }));
+                    setTransactions(mappedTxs);
+                } else {
+                    // Keep empty or show 'No Data'
+                }
+            }
+
+        } catch (error) {
+            console.error("Failed to fetch real data:", error);
+            setBackendStatus('offline'); // Connection failed
+        }
+    };
+
+    // Effect for Data Updates (Mock vs Real)
+    useEffect(() => {
+        let interval;
+
+        if (dataSource === 'MOCK') {
+            // Reset to Mock Data if switching back
+            setBackendStatus('unknown');
+            // --- MOCK LOGIC ---
+            interval = setInterval(() => {
+                setNodeStatus(prev => ({ ...prev, height: prev.height + 1 }));
+
+                // Add new Transaction
+                const newTx = {
+                    hash: "0x" + Math.random().toString(16).substr(2, 8) + "..." + Math.random().toString(16).substr(2, 4),
+                    type: ["MsgSend", "MsgDelegate", "MsgVote", "MsgWithdraw"][Math.floor(Math.random() * 4)],
+                    time: "Just now",
+                    from: "qie1..." + Math.random().toString(36).substr(2, 4),
+                    amt: (Math.random() * 1000).toFixed(2) + " QIE"
+                };
+
+                setTransactions(prev => [newTx, ...prev.slice(0, 9)]);
+
+                // Randomly toggle anomalies rarely
+                if (Math.random() > 0.95) {
+                    setStats(prev => ({ ...prev, anomalies24h: prev.anomalies24h + 1 }));
+                }
+            }, 3000);
+        } else {
+            // --- REAL LOGIC ---
+            fetchRealData(); // Initial fetch
+            interval = setInterval(fetchRealData, 5000); // Poll every 5s
+        }
+
         return () => clearInterval(interval);
-    }, []);
+    }, [dataSource]);
+
+
+    // Handle Chat Submit
+    const handleChatSubmit = () => {
+        if (!chatInput.trim()) return;
+
+        const newMsgs = [...chatMessages, { role: 'user', text: chatInput }];
+        setChatMessages(newMsgs);
+        const currentInput = chatInput;
+        setChatInput('');
+
+        // AI Response Logic
+        setTimeout(() => {
+            let response = "I'm processing that request...";
+            const lowerInput = currentInput.toLowerCase();
+
+            if (lowerInput.includes('status') || lowerInput.includes('health')) {
+                response = "✅ Node Status: HEALTHY. Block height is syncing normally (Height: 14,245,022). No critical alerts.";
+            }
+            else if (lowerInput.includes('risk') || lowerInput.includes('anomaly')) {
+                response = "🛡️ AI Risk Analysis: Current network risk is LOW (0.12%). 0 Anomaly detected in last hour.";
+            }
+            else if (lowerInput.includes('hello') || lowerInput.includes('hi') || lowerInput.includes('hey')) {
+                response = "Hello! I'm QIE-GPT. I can help you with Validator Status, Transaction Audits, Risk Scores, and Bridge Stats. What do you need?";
+            }
+            else if (lowerInput.includes('last transaction') || lowerInput.includes('latest') || lowerInput.includes('tx')) {
+                response = "The latest transaction 0x3f2...9a1 was processed 1.2s ago. Type: Cross-Chain Transfer. Amount: 450 QIE. Destination: Ethereum.";
+            }
+            else if (lowerInput.includes('transaction') || lowerInput.includes('audit')) {
+                response = "I can audit specific transactions for fraud patterns. Please paste a Transaction Hash (e.g., 0x123...) or ask for the 'latest transaction'.";
+            }
+            else if (lowerInput.includes('balance') || lowerInput.includes('funds')) {
+                response = walletAddress
+                    ? `💳 Wallet Analysis: Address ${walletAddress.substring(0, 6)}... holds approx 1,000.00 QIE (Demo Balance). No suspicious drains detected.`
+                    : "Please connect your wallet first so I can analyze your balance.";
+            }
+            else if (lowerInput.includes('price') || lowerInput.includes('market')) {
+                response = "💰 QIE Token Price: $1.24 (+5.2%). 24h Volume: $12.5M. Market Sentiment: Bullish 🚀";
+            }
+            else if (lowerInput.includes('bridge') || lowerInput.includes('cross')) {
+                response = "🌉 Bridge Status: Operational. All routes (ETH, BSC, SOL) are active. Average finality time: 4.5s.";
+            }
+            else {
+                // Randomized fallback to make it feel less static
+                const fallbacks = [
+                    "I've logged that query. Could you specify a module? (e.g., 'Risk', 'Bridge', 'Validator')",
+                    "I'm scanning the mempool... No specific anomalies found for that keyword.",
+                    "Is this regarding a specific Validator or Transaction? Please provide more context.",
+                    "My current model is tuned for Blockchain Forensics. Try asking about 'Risk Scores' or 'Latest Transactions'."
+                ];
+                response = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+            }
+
+            setChatMessages([...newMsgs, { role: 'ai', text: response }]);
+        }, 800);
+    };
 
     return (
         <div className="flex h-screen bg-slate-900 text-slate-100 font-sans overflow-hidden">
@@ -114,6 +285,7 @@ export default function Dashboard() {
                         { id: 'transactions', label: 'Transactions', icon: Globe },
                         { id: 'analytics', label: 'Analytics', icon: BarChart3 },
                         { id: 'validators', label: 'Validators', icon: CheckCircle },
+                        { id: 'news', label: 'QIE News', icon: Newspaper },
                         { id: 'alerts', label: 'Alerts', icon: Bell },
                     ].map((item) => (
                         <button
@@ -158,6 +330,28 @@ export default function Dashboard() {
                     </button>
 
                     <div className="flex items-center gap-4 ml-auto">
+
+                        {/* Data Source Toggle */}
+                        <div className="flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700 mr-2">
+                            <button
+                                onClick={() => setDataSource('MOCK')}
+                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${dataSource === 'MOCK' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
+                                MOCK
+                            </button>
+                            <button
+                                onClick={() => setDataSource('REAL')}
+                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${dataSource === 'REAL' ? 'bg-green-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
+                                {backendStatus === 'offline' && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}
+                                {backendStatus === 'online' && <span className="w-2 h-2 rounded-full bg-green-300"></span>}
+                                REAL
+                            </button>
+                        </div>
+
+                        {/* Wallet Connect Button */}
+                        <WalletConnect onConnect={handleWalletConnect} />
+
                         <div className="hidden md:flex items-center bg-slate-900 rounded-lg p-1 border border-slate-700">
                             {['qie', 'qie-testnet', 'eth'].map(net => (
                                 <button
@@ -219,16 +413,56 @@ export default function Dashboard() {
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                         <div className="lg:col-span-2 bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-xl">
                                             <h3 className="text-lg font-semibold mb-4">Transaction Volume (24h)</h3>
-                                            <div className="h-64 flex items-end justify-between gap-2 px-2">
-                                                {[35, 45, 30, 60, 75, 50, 65, 80, 70, 55, 40, 60].map((h, i) => (
-                                                    <div key={i} className="w-full bg-blue-500/20 rounded-t-sm relative group">
-                                                        <div
-                                                            style={{ height: `${h}%` }}
-                                                            className="absolute bottom-0 w-full bg-gradient-to-t from-blue-600 to-cyan-400 rounded-t-sm transition-all duration-500 group-hover:bg-blue-400"
-                                                        ></div>
-                                                        <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-xs px-2 py-1 rounded border border-slate-700 whitespace-nowrap z-10">{h * 12} Txs</div>
-                                                    </div>
-                                                ))}
+                                            <div className="h-64 w-full">
+                                                <Line
+                                                    data={{
+                                                        labels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+                                                        datasets: [
+                                                            {
+                                                                label: 'Transactions',
+                                                                data: [65, 59, 80, 81, 56, 55, 40, 70, 45, 90, 100, 85],
+                                                                fill: true,
+                                                                backgroundColor: 'rgba(59, 130, 246, 0.2)', // blue-500/20
+                                                                borderColor: '#3b82f6', // blue-500
+                                                                tension: 0.4,
+                                                                pointRadius: 0
+                                                            }
+                                                        ]
+                                                    }}
+                                                    options={{
+                                                        responsive: true,
+                                                        maintainAspectRatio: false,
+                                                        plugins: {
+                                                            legend: {
+                                                                display: false
+                                                            },
+                                                            tooltip: {
+                                                                mode: 'index',
+                                                                intersect: false,
+                                                            }
+                                                        },
+                                                        scales: {
+                                                            x: {
+                                                                grid: {
+                                                                    display: false,
+                                                                    drawBorder: false
+                                                                },
+                                                                ticks: {
+                                                                    color: '#94a3b8' // slate-400
+                                                                }
+                                                            },
+                                                            y: {
+                                                                grid: {
+                                                                    color: '#334155', // slate-700
+                                                                    drawBorder: false
+                                                                },
+                                                                ticks: {
+                                                                    color: '#94a3b8'
+                                                                }
+                                                            }
+                                                        }
+                                                    }}
+                                                />
                                             </div>
                                         </div>
                                         <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-xl">
@@ -328,6 +562,90 @@ export default function Dashboard() {
                                 </motion.div>
                             )}
 
+                            {/* News Section */}
+                            {activeSection === 'news' && (
+                                <motion.div
+                                    key="news"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -20 }}
+                                    className="space-y-6"
+                                >
+                                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                                        QIE Ecosystem News 📰
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {[
+                                            { title: "QIE V3 Mainnet Upgrade Successful", date: "Today", desc: "The highly anticipated V3 upgrade brings 10x throughput and EVM compatibility enhancement.", tag: "Tech", content: "The QIE Foundation is proud to announce the successful deployment of the V3 Mainnet. This upgrade introduces parallel transaction processing, reducing finality time to under 500ms. Validators are required to upgrade their nodes within 24 hours to maintain consensus participation." },
+                                            { title: "BridgeGuard AI Partners with QIE Foundation", date: "Today", desc: "BridgeGuard AI selected as the official security partner for the cross-chain bridge initiative.", tag: "Partnership", content: "BridgeGuard AI has entered a strategic partnership with the QIE Foundation to secure over $500M in cross-chain assets. This collaboration will see the integration of BridgeGuard's AI-driven anomaly detection models directly into the QIE Bridge protocol." },
+                                            { title: "TVL on QIE Breaches $100M Milestone", date: "Yesterday", desc: "Total Value Locked across DeFi protocols on QIE network has reached a new all-time high.", tag: "Growth", content: "Defying market trends, the Total Value Locked (TVL) on the QIE network surged past $100M this week, driven by the launch of new lending protocols and high-yield farming opportunities. User activity has increased by 300% month-over-month." },
+                                            { title: "New Grant Program for AI Developers", date: "2 days ago", desc: "QIE Foundation allocates $5M fund for developers building AI agents on-chain.", tag: "Community", content: "To foster innovation at the intersection of AI and Blockchain, the QIE Foundation has launched a $5M ecosystem grant. The program specifically targets developers building autonomous agents, decentralized inference networks, and AI-governed DAOs." },
+                                        ].map((news, i) => (
+                                            <div
+                                                key={i}
+                                                onClick={() => setSelectedNews(news)}
+                                                className="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-blue-500 transition-all cursor-pointer group hover:shadow-lg hover:shadow-blue-500/10"
+                                            >
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-1 rounded-full">{news.tag}</span>
+                                                    <span className="text-slate-500 text-sm">{news.date}</span>
+                                                </div>
+                                                <h3 className="text-xl font-bold mb-2 group-hover:text-blue-400 transition-colors">{news.title}</h3>
+                                                <p className="text-slate-400 text-sm">{news.desc}</p>
+                                                <div className="mt-4 flex items-center text-blue-400 text-sm opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                                                    Read Full Story <ChevronRight size={16} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* News Modal */}
+                                    <AnimatePresence>
+                                        {selectedNews && (
+                                            <motion.div
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                                                onClick={() => setSelectedNews(null)}
+                                            >
+                                                <motion.div
+                                                    initial={{ scale: 0.9, y: 20 }}
+                                                    animate={{ scale: 1, y: 0 }}
+                                                    exit={{ scale: 0.9, y: 20 }}
+                                                    className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl relative"
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <div className="h-48 bg-gradient-to-r from-blue-600 to-purple-600 relative p-8 flex flex-col justify-end">
+                                                        <button
+                                                            onClick={() => setSelectedNews(null)}
+                                                            className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-md transition-colors"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                        <span className="inline-block w-fit bg-white/20 text-white text-xs px-2 py-1 rounded-full mb-2">{selectedNews.tag}</span>
+                                                        <h2 className="text-3xl font-bold text-white mb-1">{selectedNews.title}</h2>
+                                                        <p className="text-white/80">{selectedNews.date}</p>
+                                                    </div>
+                                                    <div className="p-8 space-y-4">
+                                                        <p className="text-slate-300 leading-relaxed text-lg">
+                                                            {selectedNews.content || selectedNews.desc}
+                                                        </p>
+
+                                                        <div className="pt-6 border-t border-slate-800 flex justify-between items-center">
+                                                            <button className="text-blue-400 hover:text-blue-300 font-medium flex items-center gap-2">
+                                                                Share Article <Send size={16} />
+                                                            </button>
+                                                            <span className="text-slate-600 text-sm">Read time: 3 min</span>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </motion.div>
+                            )}
+
                             {activeSection === 'alerts' && (
                                 <motion.div
                                     key="alerts"
@@ -396,29 +714,65 @@ export default function Dashboard() {
                                     <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
                                         <div className="flex justify-between items-center mb-6">
                                             <h3 className="text-lg font-bold">Network Traffic Load</h3>
-                                            <select className="bg-slate-900 border border-slate-700 rounded text-sm text-slate-400 px-2 py-1 outline-none">
-                                                <option>Last 24 Hours</option>
-                                                <option>Last 7 Days</option>
+                                            <select
+                                                value={trafficRange}
+                                                onChange={(e) => setTrafficRange(e.target.value)}
+                                                className="bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-400 px-3 py-1 outline-none focus:border-blue-500 transition-colors"
+                                            >
+                                                <option value="3h">Last 3 Hours</option>
+                                                <option value="6h">Last 6 Hours</option>
+                                                <option value="24h">Last 24 Hours</option>
+                                                <option value="7d">Last 7 Days</option>
                                             </select>
                                         </div>
-                                        <div className="h-64 flex items-end justify-between gap-1">
-                                            {Array.from({ length: 24 }).map((_, i) => {
-                                                const height = Math.floor(Math.random() * 80) + 10;
-                                                return (
-                                                    <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
-                                                        <div
-                                                            className="w-full bg-blue-500/20 rounded-md relative transition-all duration-300 group-hover:bg-blue-500/30"
-                                                            style={{ height: `${height}%` }}
-                                                        >
-                                                            <div
-                                                                style={{ height: `${height * 0.7}%` }}
-                                                                className="absolute bottom-0 w-full bg-blue-500 rounded-md opacity-60"
-                                                            ></div>
-                                                        </div>
-                                                        <span className="text-[10px] text-slate-500 opacity-0 group-hover:opacity-100">{i}:00</span>
-                                                    </div>
-                                                );
-                                            })}
+                                        <div className="h-64 w-full">
+                                            <Bar
+                                                data={{
+                                                    labels: Array.from({ length: 24 }).map((_, i) => `${i}:00`),
+                                                    datasets: [
+                                                        {
+                                                            label: 'Network Traffic (TPS)',
+                                                            data: Array.from({ length: 24 }).map(() => Math.floor(Math.random() * 5000) + 1000),
+                                                            backgroundColor: '#8b5cf6', // purple-500
+                                                            borderRadius: 4,
+                                                        }
+                                                    ]
+                                                }}
+                                                options={{
+                                                    responsive: true,
+                                                    maintainAspectRatio: false,
+                                                    plugins: {
+                                                        legend: {
+                                                            display: false
+                                                        },
+                                                        tooltip: {
+                                                            mode: 'index',
+                                                            intersect: false,
+                                                        }
+                                                    },
+                                                    scales: {
+                                                        x: {
+                                                            grid: {
+                                                                display: false,
+                                                                drawBorder: false
+                                                            },
+                                                            ticks: {
+                                                                color: '#94a3b8',
+                                                                maxTicksLimit: 12
+                                                            }
+                                                        },
+                                                        y: {
+                                                            grid: {
+                                                                color: '#334155', // slate-700
+                                                                drawBorder: false
+                                                            },
+                                                            ticks: {
+                                                                color: '#94a3b8'
+                                                            }
+                                                        }
+                                                    }
+                                                }}
+                                            />
                                         </div>
                                     </div>
 
@@ -491,14 +845,65 @@ export default function Dashboard() {
                                 </motion.div>
                             )}
 
-                            {/* Contact Us Redirect/Placeholder */}
-                            {activeSection === 'contact' && (
-                                <div className="text-center py-20">Redirecting...</div>
-                                // Logic usually handled by Link or router
-                            )}
                         </AnimatePresence>
-
                     </div>
+                </div>
+
+                {/* QIE-GPT Floating Chat */}
+                <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+                    <AnimatePresence>
+                        {isChatOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                className="mb-4 w-80 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+                                style={{ height: '400px' }}
+                            >
+                                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                                        <span className="font-bold text-white">QIE-GPT Agent</span>
+                                    </div>
+                                    <button onClick={() => setIsChatOpen(false)} className="text-white/80 hover:text-white">✕</button>
+                                </div>
+
+                                <div className="flex-1 p-4 overflow-y-auto space-y-4 text-sm scrollbar-thin scrollbar-thumb-slate-700">
+                                    {chatMessages.map((msg, i) => (
+                                        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[80%] p-3 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none'}`}>
+                                                {msg.text}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="p-3 bg-slate-800 border-t border-slate-700 flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={chatInput}
+                                        onChange={(e) => setChatInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleChatSubmit();
+                                        }}
+                                        placeholder="Ask AI..."
+                                        className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 text-slate-200 focus:outline-none focus:border-blue-500"
+                                    />
+                                    <button onClick={handleChatSubmit} className="bg-blue-600 p-2 rounded-xl text-white hover:bg-blue-700">
+                                        <Send size={18} />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <button
+                        onClick={() => setIsChatOpen(!isChatOpen)}
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-full shadow-lg text-white hover:scale-110 transition-transform flex items-center gap-2 group"
+                    >
+                        <MessageSquare size={24} />
+                        {!isChatOpen && <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap px-0 group-hover:px-2">Ask QIE-GPT</span>}
+                    </button>
                 </div>
             </main>
         </div>
